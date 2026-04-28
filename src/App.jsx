@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings, Mail, MessageCircle } from 'lucide-react';
+import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings, Mail, MessageCircle, Plus, Trash2 } from 'lucide-react';
 
-// --- Data Models based on April 2026 Approved Devices ---
+// --- Global Data Models ---
 const ROLE_BANDS = [
   "Executive/Senior Management",
   "Managers/Professional Staff",
@@ -9,50 +9,6 @@ const ROLE_BANDS = [
   "General Staff",
   "Training/Departments"
 ];
-
-// Flat list of all available devices with their default prices from the April 2026 catalog
-const DEFAULT_DEVICES = [
-  { id: 'a07_4', name: 'Samsung Galaxy A07 (4GB/64GB)', price: 22120 },
-  { id: 'a07_6', name: 'Samsung Galaxy A07 (6GB/128GB)', price: 25794 },
-  { id: 'a17_4', name: 'Samsung Galaxy A17 (4GB/128GB)', price: 35347 },
-  { id: 'a17_6', name: 'Samsung Galaxy A17 (6GB/128GB)', price: 38287 },
-  { id: 'a26_6', name: 'Samsung Galaxy A26 (6GB/128GB)', price: 52214 },
-  { id: 'a26_12', name: 'Samsung Galaxy A26 (12GB/256GB)', price: 71401 },
-  { id: 'a57_8', name: 'Samsung Galaxy A57 (8GB/256GB)', price: 104740 },
-  { id: 's26_12', name: 'Samsung Galaxy S26 (12GB/256GB)', price: 185034 },
-  { id: 's26p_256', name: 'Samsung Galaxy S26 Pro (12GB/256GB)', price: 220551 },
-  { id: 's26p_512', name: 'Samsung Galaxy S26 Pro (12GB/512GB)', price: 259742 },
-  { id: 's26u_256', name: 'Samsung Galaxy S26 Ultra (12GB/256GB)', price: 171355 },
-  { id: 's26u_512', name: 'Samsung Galaxy S26 Ultra (12GB/512GB)', price: 296973 },
-  { id: 't11_6', name: 'Samsung Tab 11 Plus (6GB/128GB)', price: 43213 },
-  { id: 't11_8', name: 'Samsung Tab 11 Plus (8GB/128GB)', price: 51241 },
-  { id: 't10fe_6', name: 'Samsung Tab S10 FE Lite (6GB/128GB)', price: 64169 },
-  { id: 't10fe_8', name: 'Samsung Tab S10 FE Lite (8GB/128GB)', price: 76144 },
-  { id: 'tu_256', name: 'Samsung Tab Ultra (12GB/256GB)', price: 201636 },
-  { id: 'tu_512', name: 'Samsung Tab Ultra (12GB/512GB)', price: 229532 },
-  { id: 'wad_65', name: 'Samsung WAD Series Board 65"', price: 320984 },
-  { id: 'wad_75', name: 'Samsung WAD Series Board 75"', price: 361808 },
-  { id: 'wad_86', name: 'Samsung WAD Series Board 86"', price: 443456 }
-];
-
-// Mapping IDs to their respective role bands
-const DEVICE_CATALOG_MAPPING = {
-  "Executive/Senior Management": [
-    's26_12', 's26p_256', 's26p_512', 's26u_256', 's26u_512', 'tu_256', 'tu_512'
-  ],
-  "Managers/Professional Staff": [
-    'a57_8', 'a26_6', 'a26_12', 't11_6', 't11_8', 't10fe_6', 't10fe_8'
-  ],
-  "Field Teams / Supervisors": [
-    'a26_6', 'a26_12', 't10fe_6', 't10fe_8'
-  ],
-  "General Staff": [
-    'a17_4', 'a17_6', 'a07_4', 'a07_6'
-  ],
-  "Training/Departments": [
-    'wad_65', 'wad_75', 'wad_86', 't11_6', 't11_8', 't10fe_6', 't10fe_8', 'tu_256', 'tu_512'
-  ]
-};
 
 const CONNECTIVITY_CATEGORIES = [
   "Category 1: Device + Plan (SIM/eSIM, data, minutes)",
@@ -63,8 +19,51 @@ const NETWORKS = ["Safaricom", "Airtel", "Jamii Telecom"];
 
 const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyz13q76b8CIfo6iaDdwrhx20Ym_5Cs7I8nFTTtWBAOt49jG78S_vyCBsxKbioOeUeKUw/exec';
 
-// Base map of default prices to easily compare and merge
-const BASE_PRICES = DEFAULT_DEVICES.reduce((acc, device) => ({ ...acc, [device.id]: device.price }), {});
+// Unified Catalog merging devices, prices, and their role access rights
+const INITIAL_CATALOG = [
+  { id: 'a07_4', name: 'Samsung Galaxy A07 (4GB/64GB)', price: 22120, roles: ["General Staff"] },
+  { id: 'a07_6', name: 'Samsung Galaxy A07 (6GB/128GB)', price: 25794, roles: ["General Staff"] },
+  { id: 'a17_4', name: 'Samsung Galaxy A17 (4GB/128GB)', price: 35347, roles: ["General Staff"] },
+  { id: 'a17_6', name: 'Samsung Galaxy A17 (6GB/128GB)', price: 38287, roles: ["General Staff"] },
+  { id: 'a26_6', name: 'Samsung Galaxy A26 (6GB/128GB)', price: 52214, roles: ["Managers/Professional Staff", "Field Teams / Supervisors"] },
+  { id: 'a26_12', name: 'Samsung Galaxy A26 (12GB/256GB)', price: 71401, roles: ["Managers/Professional Staff", "Field Teams / Supervisors"] },
+  { id: 'a57_8', name: 'Samsung Galaxy A57 (8GB/256GB)', price: 104740, roles: ["Managers/Professional Staff"] },
+  { id: 's26_12', name: 'Samsung Galaxy S26 (12GB/256GB)', price: 185034, roles: ["Executive/Senior Management"] },
+  { id: 's26p_256', name: 'Samsung Galaxy S26 Pro (12GB/256GB)', price: 220551, roles: ["Executive/Senior Management"] },
+  { id: 's26p_512', name: 'Samsung Galaxy S26 Pro (12GB/512GB)', price: 259742, roles: ["Executive/Senior Management"] },
+  { id: 's26u_256', name: 'Samsung Galaxy S26 Ultra (12GB/256GB)', price: 171355, roles: ["Executive/Senior Management"] },
+  { id: 's26u_512', name: 'Samsung Galaxy S26 Ultra (12GB/512GB)', price: 296973, roles: ["Executive/Senior Management"] },
+  { id: 't11_6', name: 'Samsung Tab 11 Plus (6GB/128GB)', price: 43213, roles: ["Managers/Professional Staff", "Training/Departments"] },
+  { id: 't11_8', name: 'Samsung Tab 11 Plus (8GB/128GB)', price: 51241, roles: ["Managers/Professional Staff", "Training/Departments"] },
+  { id: 't10fe_6', name: 'Samsung Tab S10 FE Lite (6GB/128GB)', price: 64169, roles: ["Managers/Professional Staff", "Field Teams / Supervisors", "Training/Departments"] },
+  { id: 't10fe_8', name: 'Samsung Tab S10 FE Lite (8GB/128GB)', price: 76144, roles: ["Managers/Professional Staff", "Field Teams / Supervisors", "Training/Departments"] },
+  { id: 'tu_256', name: 'Samsung Tab Ultra (12GB/256GB)', price: 201636, roles: ["Executive/Senior Management", "Training/Departments"] },
+  { id: 'tu_512', name: 'Samsung Tab Ultra (12GB/512GB)', price: 229532, roles: ["Executive/Senior Management", "Training/Departments"] },
+  { id: 'wad_65', name: 'Samsung WAD Series Board 65"', price: 320984, roles: ["Training/Departments"] },
+  { id: 'wad_75', name: 'Samsung WAD Series Board 75"', price: 361808, roles: ["Training/Departments"] },
+  { id: 'wad_86', name: 'Samsung WAD Series Board 86"', price: 443456, roles: ["Training/Departments"] }
+];
+
+// Utilities to securely compress the catalog into the URL string and uncompress it
+const packCatalog = (catalog) => {
+  const packed = catalog.map(d => ({
+    i: d.id, n: d.name, p: d.price, r: d.roles.map(role => ROLE_BANDS.indexOf(role))
+  }));
+  return btoa(encodeURIComponent(JSON.stringify(packed)));
+};
+
+const unpackCatalog = (packedStr) => {
+  try {
+    const packed = JSON.parse(decodeURIComponent(atob(packedStr)));
+    return packed.map(d => ({
+      id: d.i, name: d.n, price: d.p, roles: d.r.map(idx => ROLE_BANDS[idx]).filter(Boolean)
+    }));
+  } catch (e) {
+    console.error("Failed to parse custom config", e);
+    return INITIAL_CATALOG;
+  }
+};
+
 
 export default function App() {
   // Check if this is an actual generated link shared with an employee
@@ -74,26 +73,18 @@ export default function App() {
   const getInitialView = () => isEmployeeLink ? 'survey' : 'admin';
   const getInitialCompany = () => new URLSearchParams(window.location.search).get('company') || '';
   
-  // If the link has a 'cfg' parameter, decode it to get the custom prices set by the admin
-  const getInitialPrices = () => {
+  // Initialize the catalog (custom from URL if it exists, otherwise default)
+  const [activeCatalog, setActiveCatalog] = useState(() => {
     const cfg = new URLSearchParams(window.location.search).get('cfg');
-    if (cfg) {
-      try {
-        const overrides = JSON.parse(atob(cfg));
-        return { ...BASE_PRICES, ...overrides };
-      } catch (e) {
-        console.error("Failed to parse custom config", e);
-      }
-    }
-    return { ...BASE_PRICES };
-  };
+    return cfg ? unpackCatalog(cfg) : INITIAL_CATALOG;
+  });
 
   const [currentView, setCurrentView] = useState(getInitialView());
   const [targetCompany, setTargetCompany] = useState(getInitialCompany());
-  const [devicePrices, setDevicePrices] = useState(getInitialPrices());
 
   // --- Admin State ---
   const [adminForm, setAdminForm] = useState({ companyName: '', contactPerson: '', contactEmail: '', contactPhone: '' });
+  const [adminCatalog, setAdminCatalog] = useState([...INITIAL_CATALOG]);
   const [generatedLink, setGeneratedLink] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -109,13 +100,33 @@ export default function App() {
   });
   const [surveyStatus, setSurveyStatus] = useState('idle');
 
-  // --- Handlers ---
+  // --- Handlers: Admin Catalog Management ---
   const handleAdminChange = (e) => setAdminForm({ ...adminForm, [e.target.name]: e.target.value });
   
-  const handlePriceChange = (id, newPrice) => {
-    setDevicePrices(prev => ({ ...prev, [id]: Number(newPrice) || 0 }));
+  const handleCatalogUpdate = (id, field, value) => {
+    setAdminCatalog(prev => prev.map(dev => dev.id === id ? { ...dev, [field]: value } : dev));
   };
 
+  const handleToggleRole = (id, role) => {
+    setAdminCatalog(prev => prev.map(dev => {
+      if (dev.id === id) {
+        const roles = dev.roles.includes(role) ? dev.roles.filter(r => r !== role) : [...dev.roles, role];
+        return { ...dev, roles };
+      }
+      return dev;
+    }));
+  };
+
+  const handleDeleteDevice = (id) => {
+    setAdminCatalog(prev => prev.filter(dev => dev.id !== id));
+  };
+
+  const handleAddDevice = () => {
+    const newId = 'dev_' + Date.now().toString(36);
+    setAdminCatalog([{ id: newId, name: 'New Custom Device', price: 0, roles: [] }, ...adminCatalog]);
+  };
+
+  // --- Handlers: Survey & Output ---
   const handleSurveyChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setSurveyForm({ ...surveyForm, [e.target.name]: value });
@@ -131,30 +142,25 @@ export default function App() {
   const handleOnboardCompany = async (e) => {
     e.preventDefault();
     setIsGenerating(true);
-    
-    // Extract only the prices that were modified to keep the URL clean and short
-    const modifiedPrices = {};
-    Object.keys(devicePrices).forEach(id => {
-      if (devicePrices[id] !== BASE_PRICES[id]) {
-        modifiedPrices[id] = devicePrices[id];
-      }
-    });
 
     const baseUrl = window.location.origin + window.location.pathname;
     const safeCompanyId = encodeURIComponent(adminForm.companyName);
     
-    // If there are custom prices, compress them into Base64 and attach to the URL
-    const cfgStr = Object.keys(modifiedPrices).length > 0 ? btoa(JSON.stringify(modifiedPrices)) : '';
-    const link = `${baseUrl}?company=${safeCompanyId}${cfgStr ? `&cfg=${cfgStr}` : ''}`;
+    // Create the compressed parameter only if changes were made
+    const defaultCfgStr = packCatalog(INITIAL_CATALOG);
+    const customCfgStr = packCatalog(adminCatalog);
+    const cfgParam = (customCfgStr !== defaultCfgStr) ? `&cfg=${customCfgStr}` : '';
+    
+    const link = `${baseUrl}?company=${safeCompanyId}${cfgParam}`;
 
     const payload = {
       action: "onboardCompany",
       companyName: adminForm.companyName,
       contactPerson: adminForm.contactPerson,
       contactEmail: adminForm.contactEmail,
-      contactPhone: adminForm.contactPhone, // Send phone number to sheets
+      contactPhone: adminForm.contactPhone,
       webAppBaseUrl: baseUrl,
-      surveyLink: link // Send the fully configured link to the backend so it can be emailed
+      surveyLink: link
     };
 
     try {
@@ -169,6 +175,7 @@ export default function App() {
 
     setTimeout(() => {
       setGeneratedLink(link);
+      setActiveCatalog(adminCatalog); // Ensure preview uses the custom admin config
       setIsGenerating(false);
     }, 1200); 
   };
@@ -177,9 +184,8 @@ export default function App() {
     e.preventDefault();
     setSurveyStatus('submitting');
 
-    // Find the full device details based on the selected ID
-    const selectedDeviceObj = DEFAULT_DEVICES.find(d => d.id === surveyForm.selectedDeviceId);
-    const finalPrice = formatPrice(devicePrices[surveyForm.selectedDeviceId]);
+    const selectedDeviceObj = activeCatalog.find(d => d.id === surveyForm.selectedDeviceId);
+    const finalPrice = formatPrice(selectedDeviceObj.price);
 
     const payload = {
       action: "submitSurvey",
@@ -224,17 +230,16 @@ export default function App() {
   };
 
   const getWhatsAppLink = () => {
-    // Smart formatter for Kenyan phone numbers
-    let phone = adminForm.contactPhone.replace(/\D/g, ''); // strip non-digits
-    if (phone.startsWith('0')) {
-      phone = '254' + phone.substring(1);
-    } else if (phone.startsWith('7') || phone.startsWith('1')) {
-      phone = '254' + phone;
-    }
+    let phone = adminForm.contactPhone.replace(/\D/g, ''); 
+    if (phone.startsWith('0')) phone = '254' + phone.substring(1);
+    else if (phone.startsWith('7') || phone.startsWith('1')) phone = '254' + phone;
     
-    const text = encodeURIComponent(`Dear ${adminForm.contactPerson || 'Team'},\n\nAs agreed, please find the staff device interest survey link below.\n\nWe kindly request you to share this with all eligible staff at your convenience:\n\n${generatedLink}\n\nThank you for partnering with us on this initiative.\n\nBest regards,\nTEP Connect Administrator`);
+    const text = encodeURIComponent(`Hello ${adminForm.contactPerson || 'Team'},\n\nYour infrastructure for the TEP Connect Staff Device Program is ready.\n\nPlease share the following secure link with your eligible staff so they can view the approved catalog and register their device preferences and check-off consent:\n\n${generatedLink}`);
     return `https://wa.me/${phone}?text=${text}`;
   };
+
+  // Derived variable for the dropdown options based on the currently selected role
+  const availableDevices = activeCatalog.filter(d => d.roles.includes(surveyForm.roleTier));
 
   // --- Views ---
   const renderAdminView = () => (
@@ -301,30 +306,89 @@ export default function App() {
                 className="flex items-center gap-2 text-indigo-600 font-bold text-sm hover:text-indigo-800 transition-colors"
               >
                 <Settings size={18} className={showConfig ? "rotate-90 transition-transform" : "transition-transform"} />
-                {showConfig ? "Hide Hardware & Pricing Configurator" : "Configure Custom Devices & Pricing (Optional)"}
+                {showConfig ? "Hide Hardware & Pricing Configurator" : "Configure Custom Catalog & Roles (Optional)"}
               </button>
 
               {showConfig && (
                 <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-6 animate-fade-in">
-                  <p className="text-sm text-slate-500 mb-4">Edit the default prices below. Any modifications will be securely embedded into the generated link so employees see the correct custom pricing.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    {DEFAULT_DEVICES.map(device => (
-                      <div key={device.id} className="flex justify-between items-center p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-300 transition-colors">
-                        <span className="text-sm font-semibold text-slate-700 truncate mr-3 flex-1" title={device.name}>
-                          {device.name}
-                        </span>
-                        <div className="flex items-center gap-2 w-32 shrink-0">
-                          <span className="text-sm text-slate-400 font-medium">Ksh</span>
-                          <input
-                            type="number"
-                            value={devicePrices[device.id]}
-                            onChange={(e) => handlePriceChange(device.id, e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm font-semibold text-slate-900 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-right"
-                          />
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-slate-500 leading-relaxed max-w-xl">
+                      Add, remove, or modify devices, pricing, and role-based access for this specific client. Modifications are embedded securely into their deployment link.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar pb-2">
+                    {adminCatalog.map((device, index) => (
+                      <div key={device.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-indigo-300 transition-colors relative group">
+                        
+                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                          <div className="flex-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Device Name</label>
+                            <input
+                              type="text"
+                              value={device.name}
+                              onChange={e => handleCatalogUpdate(device.id, 'name', e.target.value)}
+                              className="w-full font-semibold text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-200 focus:border-indigo-500 outline-none pb-1 mt-1 transition-colors"
+                              placeholder="e.g. Samsung Galaxy S26"
+                            />
+                          </div>
+                          
+                          <div className="w-full sm:w-32 shrink-0 relative">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Price (Ksh)</label>
+                            <input
+                              type="number"
+                              value={device.price}
+                              onChange={e => handleCatalogUpdate(device.id, 'price', parseInt(e.target.value) || 0)}
+                              className="w-full font-semibold text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-200 focus:border-indigo-500 outline-none pb-1 mt-1 transition-colors"
+                            />
+                          </div>
                         </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Available To These Roles</label>
+                          <div className="flex flex-wrap gap-2">
+                            {ROLE_BANDS.map(role => {
+                              const isActive = device.roles.includes(role);
+                              // Shorten the display name of the role for the badges (e.g., "Executive/Senior Management" -> "Executive")
+                              const shortRole = role.split('/')[0];
+                              return (
+                                <button
+                                  key={role}
+                                  type="button"
+                                  onClick={() => handleToggleRole(device.id, role)}
+                                  className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                                    isActive
+                                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold shadow-sm'
+                                      : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 font-medium'
+                                  }`}
+                                  title={`Toggle access for ${role}`}
+                                >
+                                  {shortRole}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDevice(device.id)}
+                          className="absolute top-4 right-4 text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          title="Remove Device"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     ))}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddDevice}
+                    className="mt-4 flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-colors font-bold shadow-sm"
+                  >
+                    <Plus size={20} /> Add Custom Device
+                  </button>
                 </div>
               )}
             </div>
@@ -520,16 +584,14 @@ export default function App() {
                       required name="selectedDeviceId" value={surveyForm.selectedDeviceId} onChange={handleSurveyChange}
                       className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none"
                     >
-                      <option value="" disabled>Select a device to view pricing...</option>
-                      {DEVICE_CATALOG_MAPPING[surveyForm.roleTier].map(deviceId => {
-                        const device = DEFAULT_DEVICES.find(d => d.id === deviceId);
-                        if (!device) return null;
-                        return (
-                          <option key={device.id} value={device.id}>
-                            {device.name} - {formatPrice(devicePrices[device.id])}
-                          </option>
-                        );
-                      })}
+                      <option value="" disabled>
+                        {availableDevices.length > 0 ? "Select a device to view pricing..." : "No devices available for this band."}
+                      </option>
+                      {availableDevices.map(device => (
+                        <option key={device.id} value={device.id}>
+                          {device.name} - {formatPrice(device.price)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
