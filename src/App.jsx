@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings, Mail } from 'lucide-react';
+import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings, Mail, MessageCircle } from 'lucide-react';
 
 // --- Data Models based on April 2026 Approved Devices ---
 const ROLE_BANDS = [
@@ -93,7 +93,7 @@ export default function App() {
   const [devicePrices, setDevicePrices] = useState(getInitialPrices());
 
   // --- Admin State ---
-  const [adminForm, setAdminForm] = useState({ companyName: '', contactPerson: '', contactEmail: '' });
+  const [adminForm, setAdminForm] = useState({ companyName: '', contactPerson: '', contactEmail: '', contactPhone: '' });
   const [generatedLink, setGeneratedLink] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -152,6 +152,7 @@ export default function App() {
       companyName: adminForm.companyName,
       contactPerson: adminForm.contactPerson,
       contactEmail: adminForm.contactEmail,
+      contactPhone: adminForm.contactPhone, // Send phone number to sheets
       webAppBaseUrl: baseUrl,
       surveyLink: link // Send the fully configured link to the backend so it can be emailed
     };
@@ -222,6 +223,19 @@ export default function App() {
     return `mailto:${adminForm.contactEmail}?subject=${subject}&body=${body}`;
   };
 
+  const getWhatsAppLink = () => {
+    // Smart formatter for Kenyan phone numbers
+    let phone = adminForm.contactPhone.replace(/\D/g, ''); // strip non-digits
+    if (phone.startsWith('0')) {
+      phone = '254' + phone.substring(1);
+    } else if (phone.startsWith('7') || phone.startsWith('1')) {
+      phone = '254' + phone;
+    }
+    
+    const text = encodeURIComponent(`Hello ${adminForm.contactPerson || 'Team'},\n\nYour infrastructure for the TEP Connect Staff Device Program is ready.\n\nPlease share the following secure link with your eligible staff so they can view the approved catalog and register their device preferences and check-off consent:\n\n${generatedLink}`);
+    return `https://wa.me/${phone}?text=${text}`;
+  };
+
   // --- Views ---
   const renderAdminView = () => (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
@@ -259,8 +273,17 @@ export default function App() {
                   placeholder="e.g. Jane Doe, HR Director"
                 />
               </div>
-              
+
               <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">WhatsApp Number (Optional)</label>
+                <input 
+                  type="tel" name="contactPhone" value={adminForm.contactPhone} onChange={handleAdminChange}
+                  className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-slate-800 shadow-sm"
+                  placeholder="e.g. 0712345678"
+                />
+              </div>
+              
+              <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Contact Email *</label>
                 <input 
                   required type="email" name="contactEmail" value={adminForm.contactEmail} onChange={handleAdminChange}
@@ -357,12 +380,24 @@ export default function App() {
               </div>
               
               <div className="mt-6 flex flex-col sm:flex-row justify-between items-center border-t border-emerald-200/50 pt-4 gap-4">
-                <a 
-                  href={getMailtoLink()}
-                  className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm flex items-center gap-1.5 transition-colors"
-                >
-                  <Mail size={16} /> Open Email Draft Manually
-                </a>
+                <div className="flex flex-wrap items-center gap-4">
+                  <a 
+                    href={getMailtoLink()}
+                    className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm flex items-center gap-1.5 transition-colors"
+                  >
+                    <Mail size={16} /> Open Email
+                  </a>
+                  
+                  {adminForm.contactPhone && (
+                    <a 
+                      href={getWhatsAppLink()}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-emerald-600 hover:text-emerald-800 font-semibold text-sm flex items-center gap-1.5 transition-colors"
+                    >
+                      <MessageCircle size={16} /> Send via WhatsApp
+                    </a>
+                  )}
+                </div>
 
                 <button 
                   onClick={previewSurvey}
