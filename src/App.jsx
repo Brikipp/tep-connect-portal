@@ -225,7 +225,7 @@ export default function App() {
 
   const getMailtoLink = () => {
     const subject = encodeURIComponent(`TEP Connect Staff Device Program - ${adminForm.companyName}`);
-    const body = encodeURIComponent(`Hello ${adminForm.contactPerson || 'Team'},\n\nYour infrastructure for the TEP Connect Staff Device Program is ready.\n\nPlease share the following link with your eligible staff so they can securely register their device preferences and check-off consent:\n\n${generatedLink}\n\nBest regards,\nTEP Connect Administrator`);
+    const body = encodeURIComponent(`Dear ${adminForm.contactPerson || 'Team'},\n\nAs agreed, please find the staff device interest survey link below.\n\nWe kindly request you to share this with all eligible staff at your convenience:\n\n${generatedLink}\n\nThank you for partnering with us on this initiative.\n\nBest regards,\nTEP Connect Administrator`);
     return `mailto:${adminForm.contactEmail}?subject=${subject}&body=${body}`;
   };
 
@@ -234,7 +234,7 @@ export default function App() {
     if (phone.startsWith('0')) phone = '254' + phone.substring(1);
     else if (phone.startsWith('7') || phone.startsWith('1')) phone = '254' + phone;
     
-    const text = encodeURIComponent(`Hello ${adminForm.contactPerson || 'Team'},\n\nYour infrastructure for the TEP Connect Staff Device Program is ready.\n\nPlease share the following secure link with your eligible staff so they can view the approved catalog and register their device preferences and check-off consent:\n\n${generatedLink}`);
+    const text = encodeURIComponent(`Dear ${adminForm.contactPerson || 'Team'},\n\nAs agreed, please find the staff device interest survey link below.\n\nWe kindly request you to share this with all eligible staff at your convenience:\n\n${generatedLink}\n\nThank you for partnering with us on this initiative.\n\nBest regards,\nTEP Connect Administrator`);
     return `https://wa.me/${phone}?text=${text}`;
   };
 
