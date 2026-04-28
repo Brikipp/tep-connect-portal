@@ -232,7 +232,7 @@ export default function App() {
       phone = '254' + phone;
     }
     
-    const text = encodeURIComponent(`Hello ${adminForm.contactPerson || 'Team'},\n\nYour infrastructure for the TEP Connect Staff Device Program is ready.\n\nPlease share the following secure link with your eligible staff so they can view the approved catalog and register their device preferences and check-off consent:\n\n${generatedLink}`);
+    const text = encodeURIComponent(`Dear ${adminForm.contactPerson || 'Team'},\n\nAs agreed, please find the staff device interest survey link below.\n\nWe kindly request you to share this with all eligible staff at your convenience:\n\n${generatedLink}\n\nThank you for partnering with us on this initiative.\n\nBest regards,\nTEP Connect Administrator`);
     return `https://wa.me/${phone}?text=${text}`;
   };
 
