@@ -40,10 +40,12 @@ const NETWORKS = ["Safaricom", "Airtel", "Jamii Telecom"];
 const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyz13q76b8CIfo6iaDdwrhx20Ym_5Cs7I8nFTTtWBAOt49jG78S_vyCBsxKbioOeUeKUw/exec';
 
 export default function App() {
+  // Check if this is an actual generated link shared with an employee
+  const isEmployeeLink = new URLSearchParams(window.location.search).has('company');
+
   // Routing State - Read from URL first to auto-route generated links
   const getInitialView = () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.has('company') ? 'survey' : 'admin';
+    return isEmployeeLink ? 'survey' : 'admin';
   };
   
   const getInitialCompany = () => {
@@ -269,15 +271,18 @@ export default function App() {
   const renderSurveyView = () => (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-12">
       
-      <button 
-        onClick={() => { 
-          window.history.pushState({}, '', window.location.pathname); 
-          setCurrentView('admin'); 
-        }} 
-        className="text-sm text-slate-500 hover:text-slate-900 font-medium flex items-center gap-1.5 mb-2 transition-colors px-2"
-      >
-        <ArrowLeft size={16} /> Return to Admin
-      </button>
+      {/* Only show the Back button if the admin is previewing the survey. Hide it for actual employees. */}
+      {!isEmployeeLink && (
+        <button 
+          onClick={() => { 
+            window.history.pushState({}, '', window.location.pathname); 
+            setCurrentView('admin'); 
+          }} 
+          className="text-sm text-slate-500 hover:text-slate-900 font-medium flex items-center gap-1.5 mb-2 transition-colors px-2"
+        >
+          <ArrowLeft size={16} /> Return to Admin
+        </button>
+      )}
 
       <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden relative">
         
@@ -486,7 +491,8 @@ export default function App() {
             </div>
           </div>
           
-          {currentView === 'survey' && (
+          {/* Hide the "Employee Facing View" pill on the live link as well */}
+          {currentView === 'survey' && !isEmployeeLink && (
             <div className="hidden sm:flex items-center gap-2 bg-indigo-50 border border-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-semibold">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
               Employee Facing View
