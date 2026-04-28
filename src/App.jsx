@@ -37,13 +37,22 @@ const CONNECTIVITY_CATEGORIES = [
 
 const NETWORKS = ["Safaricom", "Airtel", "Jamii Telecom"];
 
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyz13q76b8CIfo6iaDdwrhx20Ym_5Cs7I8nFTTtWBAOt49jG78S_vyCBsxKbioOeUeKUw/exec';
+
 export default function App() {
-  // Routing State
-  const [currentView, setCurrentView] = useState('admin');
-  const [targetCompany, setTargetCompany] = useState('');
+  // Routing State - Read from URL first to auto-route generated links
+  const getInitialView = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('company') ? 'survey' : 'admin';
+  };
   
-  // App Script Webhook URL
-  const [webhookUrl, setWebhookUrl] = useState('');
+  const getInitialCompany = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('company') || '';
+  };
+
+  const [currentView, setCurrentView] = useState(getInitialView());
+  const [targetCompany, setTargetCompany] = useState(getInitialCompany());
 
   // --- Admin State ---
   const [adminForm, setAdminForm] = useState({ companyName: '', contactPerson: '', contactEmail: '' });
@@ -87,16 +96,14 @@ export default function App() {
       webAppBaseUrl: baseUrl
     };
 
-    if (webhookUrl) {
-      try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-      } catch (err) {
-        console.error("Webhook submission failed", err);
-      }
+    try {
+      await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+    } catch (err) {
+      console.error("Webhook submission failed", err);
     }
 
     setTimeout(() => {
@@ -121,16 +128,14 @@ export default function App() {
       payrollConsent: surveyForm.payrollConsent
     };
 
-    if (webhookUrl) {
-       try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-      } catch (err) {
-        console.error("Webhook submission error.", err);
-      }
+    try {
+      await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+    } catch (err) {
+      console.error("Webhook submission error.", err);
     }
 
     setTimeout(() => {
@@ -160,22 +165,6 @@ export default function App() {
         
         <div className="p-8 md:p-10">
           
-          {/* Optional Webhook Configuration */}
-          <div className="mb-10 p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-start gap-4 transition-all hover:bg-indigo-50">
-            <ShieldCheck className="text-indigo-600 shrink-0 mt-0.5" size={24} />
-            <div className="w-full">
-              <h4 className="text-sm font-bold text-indigo-900">System Integration (Optional)</h4>
-              <p className="mt-1 text-sm text-indigo-700/80 mb-3">Link your Google Apps Script Web App URL to automate backend sheet generation.</p>
-              <input 
-                type="url" 
-                placeholder="https://script.google.com/macros/s/..." 
-                className="w-full px-4 py-2.5 text-sm border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm outline-none transition-all placeholder:text-slate-400"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-              />
-            </div>
-          </div>
-
           <form onSubmit={handleOnboardCompany} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
@@ -281,7 +270,10 @@ export default function App() {
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-12">
       
       <button 
-        onClick={() => setCurrentView('admin')} 
+        onClick={() => { 
+          window.history.pushState({}, '', window.location.pathname); 
+          setCurrentView('admin'); 
+        }} 
         className="text-sm text-slate-500 hover:text-slate-900 font-medium flex items-center gap-1.5 mb-2 transition-colors px-2"
       >
         <ArrowLeft size={16} /> Return to Admin
