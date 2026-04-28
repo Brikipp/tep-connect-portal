@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck } from 'lucide-react';
+import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings } from 'lucide-react';
 
-// --- Data Models based on TEP Connect PDF ---
+// --- Data Models based on April 2026 Approved Devices ---
 const ROLE_BANDS = [
   "Executive/Senior Management",
   "Managers/Professional Staff",
@@ -10,23 +10,47 @@ const ROLE_BANDS = [
   "Training/Departments"
 ];
 
-const DEVICE_CATALOG = {
+// Flat list of all available devices with their default prices from the April 2026 catalog
+const DEFAULT_DEVICES = [
+  { id: 'a07_4', name: 'Samsung Galaxy A07 (4GB/64GB)', price: 22120 },
+  { id: 'a07_6', name: 'Samsung Galaxy A07 (6GB/128GB)', price: 25794 },
+  { id: 'a17_4', name: 'Samsung Galaxy A17 (4GB/128GB)', price: 35347 },
+  { id: 'a17_6', name: 'Samsung Galaxy A17 (6GB/128GB)', price: 38287 },
+  { id: 'a26_6', name: 'Samsung Galaxy A26 (6GB/128GB)', price: 52214 },
+  { id: 'a26_12', name: 'Samsung Galaxy A26 (12GB/256GB)', price: 71401 },
+  { id: 'a57_8', name: 'Samsung Galaxy A57 (8GB/256GB)', price: 104740 },
+  { id: 's26_12', name: 'Samsung Galaxy S26 (12GB/256GB)', price: 185034 },
+  { id: 's26p_256', name: 'Samsung Galaxy S26 Pro (12GB/256GB)', price: 220551 },
+  { id: 's26p_512', name: 'Samsung Galaxy S26 Pro (12GB/512GB)', price: 259742 },
+  { id: 's26u_256', name: 'Samsung Galaxy S26 Ultra (12GB/256GB)', price: 171355 },
+  { id: 's26u_512', name: 'Samsung Galaxy S26 Ultra (12GB/512GB)', price: 296973 },
+  { id: 't11_6', name: 'Samsung Tab 11 Plus (6GB/128GB)', price: 43213 },
+  { id: 't11_8', name: 'Samsung Tab 11 Plus (8GB/128GB)', price: 51241 },
+  { id: 't10fe_6', name: 'Samsung Tab S10 FE Lite (6GB/128GB)', price: 64169 },
+  { id: 't10fe_8', name: 'Samsung Tab S10 FE Lite (8GB/128GB)', price: 76144 },
+  { id: 'tu_256', name: 'Samsung Tab Ultra (12GB/256GB)', price: 201636 },
+  { id: 'tu_512', name: 'Samsung Tab Ultra (12GB/512GB)', price: 229532 },
+  { id: 'wad_65', name: 'Samsung WAD Series Board 65"', price: 320984 },
+  { id: 'wad_75', name: 'Samsung WAD Series Board 75"', price: 361808 },
+  { id: 'wad_86', name: 'Samsung WAD Series Board 86"', price: 443456 }
+];
+
+// Mapping IDs to their respective role bands
+const DEVICE_CATALOG_MAPPING = {
   "Executive/Senior Management": [
-    "Samsung S25 Ultra", "Samsung S25+", "Samsung S25 FE", "Samsung Tab Ultra", 
-    "Apple iPhone 17 (Optional)", "Apple iPhone 17 Pro (Optional)", "Apple iPhone 17 Pro Max (Optional)"
+    's26_12', 's26p_256', 's26p_512', 's26u_256', 's26u_512', 'tu_256', 'tu_512'
   ],
   "Managers/Professional Staff": [
-    "Samsung A56/A57 Series", "Samsung A26/A27 Series", "Samsung Tab 11 Plus", "Samsung Tab FE Lite", "Apple iPad (Optional)"
+    'a57_8', 'a26_6', 'a26_12', 't11_6', 't11_8', 't10fe_6', 't10fe_8'
   ],
   "Field Teams / Supervisors": [
-    "Samsung A26/A27 Series", "Samsung Tab FE Lite"
+    'a26_6', 'a26_12', 't10fe_6', 't10fe_8'
   ],
   "General Staff": [
-    "Samsung A17 Series", "Samsung A07", "Faiba M1 Phone", "Faiba M2 Phone"
+    'a17_4', 'a17_6', 'a07_4', 'a07_6'
   ],
   "Training/Departments": [
-    "Samsung WAD Series Interactive Board 65\"", "Samsung WAD Series Interactive Board 75\"", "Samsung WAD Series Interactive Board 86\"", 
-    "Samsung Tab 11 Plus", "Samsung Tab FE Lite", "Samsung Tab Ultra"
+    'wad_65', 'wad_75', 'wad_86', 't11_6', 't11_8', 't10fe_6', 't10fe_8', 'tu_256', 'tu_512'
   ]
 };
 
@@ -39,33 +63,46 @@ const NETWORKS = ["Safaricom", "Airtel", "Jamii Telecom"];
 
 const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyz13q76b8CIfo6iaDdwrhx20Ym_5Cs7I8nFTTtWBAOt49jG78S_vyCBsxKbioOeUeKUw/exec';
 
+// Base map of default prices to easily compare and merge
+const BASE_PRICES = DEFAULT_DEVICES.reduce((acc, device) => ({ ...acc, [device.id]: device.price }), {});
+
 export default function App() {
   // Check if this is an actual generated link shared with an employee
   const isEmployeeLink = new URLSearchParams(window.location.search).has('company');
 
-  // Routing State - Read from URL first to auto-route generated links
-  const getInitialView = () => {
-    return isEmployeeLink ? 'survey' : 'admin';
-  };
+  // --- Initializing App State from URL ---
+  const getInitialView = () => isEmployeeLink ? 'survey' : 'admin';
+  const getInitialCompany = () => new URLSearchParams(window.location.search).get('company') || '';
   
-  const getInitialCompany = () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('company') || '';
+  // If the link has a 'cfg' parameter, decode it to get the custom prices set by the admin
+  const getInitialPrices = () => {
+    const cfg = new URLSearchParams(window.location.search).get('cfg');
+    if (cfg) {
+      try {
+        const overrides = JSON.parse(atob(cfg));
+        return { ...BASE_PRICES, ...overrides };
+      } catch (e) {
+        console.error("Failed to parse custom config", e);
+      }
+    }
+    return { ...BASE_PRICES };
   };
 
   const [currentView, setCurrentView] = useState(getInitialView());
   const [targetCompany, setTargetCompany] = useState(getInitialCompany());
+  const [devicePrices, setDevicePrices] = useState(getInitialPrices());
 
   // --- Admin State ---
   const [adminForm, setAdminForm] = useState({ companyName: '', contactPerson: '', contactEmail: '' });
   const [generatedLink, setGeneratedLink] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
 
   // --- Survey State ---
   const [surveyForm, setSurveyForm] = useState({
     employeeName: '',
     roleTier: '',
-    selectedDevice: '',
+    selectedDeviceId: '',
     category: '',
     network: '',
     payrollConsent: false
@@ -74,21 +111,41 @@ export default function App() {
 
   // --- Handlers ---
   const handleAdminChange = (e) => setAdminForm({ ...adminForm, [e.target.name]: e.target.value });
+  
+  const handlePriceChange = (id, newPrice) => {
+    setDevicePrices(prev => ({ ...prev, [id]: Number(newPrice) || 0 }));
+  };
+
   const handleSurveyChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setSurveyForm({ ...surveyForm, [e.target.name]: value });
     
-    if (e.target.name === 'roleTier') setSurveyForm(prev => ({ ...prev, selectedDevice: '' }));
+    if (e.target.name === 'roleTier') setSurveyForm(prev => ({ ...prev, selectedDeviceId: '' }));
     if (e.target.name === 'category') setSurveyForm(prev => ({ ...prev, network: '' }));
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(price);
   };
 
   const handleOnboardCompany = async (e) => {
     e.preventDefault();
     setIsGenerating(true);
     
+    // Extract only the prices that were modified to keep the URL clean and short
+    const modifiedPrices = {};
+    Object.keys(devicePrices).forEach(id => {
+      if (devicePrices[id] !== BASE_PRICES[id]) {
+        modifiedPrices[id] = devicePrices[id];
+      }
+    });
+
     const baseUrl = window.location.origin + window.location.pathname;
     const safeCompanyId = encodeURIComponent(adminForm.companyName);
-    const link = `${baseUrl}?company=${safeCompanyId}`;
+    
+    // If there are custom prices, compress them into Base64 and attach to the URL
+    const cfgStr = Object.keys(modifiedPrices).length > 0 ? btoa(JSON.stringify(modifiedPrices)) : '';
+    const link = `${baseUrl}?company=${safeCompanyId}${cfgStr ? `&cfg=${cfgStr}` : ''}`;
 
     const payload = {
       action: "onboardCompany",
@@ -118,15 +175,19 @@ export default function App() {
     e.preventDefault();
     setSurveyStatus('submitting');
 
+    // Find the full device details based on the selected ID
+    const selectedDeviceObj = DEFAULT_DEVICES.find(d => d.id === surveyForm.selectedDeviceId);
+    const finalPrice = formatPrice(devicePrices[surveyForm.selectedDeviceId]);
+
     const payload = {
       action: "submitSurvey",
       companyName: targetCompany || "Demo Company",
       employeeName: surveyForm.employeeName,
       roleTier: surveyForm.roleTier,
-      selectedDevice: surveyForm.selectedDevice,
+      selectedDevice: selectedDeviceObj ? selectedDeviceObj.name : 'Unknown Device',
       category: surveyForm.category,
       network: surveyForm.category.includes('Category 1') ? surveyForm.network : 'N/A',
-      price: 'Pending HR Approval',
+      price: finalPrice, 
       payrollConsent: surveyForm.payrollConsent
     };
 
@@ -200,6 +261,42 @@ export default function App() {
                   placeholder="contact@company.com"
                 />
               </div>
+            </div>
+
+            {/* Advanced Configuration Accordion */}
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShowConfig(!showConfig)}
+                className="flex items-center gap-2 text-indigo-600 font-bold text-sm hover:text-indigo-800 transition-colors"
+              >
+                <Settings size={18} className={showConfig ? "rotate-90 transition-transform" : "transition-transform"} />
+                {showConfig ? "Hide Hardware & Pricing Configurator" : "Configure Custom Devices & Pricing (Optional)"}
+              </button>
+
+              {showConfig && (
+                <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-6 animate-fade-in">
+                  <p className="text-sm text-slate-500 mb-4">Edit the default prices below. Any modifications will be securely embedded into the generated link so employees see the correct custom pricing.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {DEFAULT_DEVICES.map(device => (
+                      <div key={device.id} className="flex justify-between items-center p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-300 transition-colors">
+                        <span className="text-sm font-semibold text-slate-700 truncate mr-3 flex-1" title={device.name}>
+                          {device.name}
+                        </span>
+                        <div className="flex items-center gap-2 w-32 shrink-0">
+                          <span className="text-sm text-slate-400 font-medium">Ksh</span>
+                          <input
+                            type="number"
+                            value={devicePrices[device.id]}
+                            onChange={(e) => handlePriceChange(device.id, e.target.value)}
+                            className="w-full px-2 py-1.5 text-sm font-semibold text-slate-900 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-right"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-4">
@@ -313,7 +410,7 @@ export default function App() {
               Your device preference has been successfully captured and routed to HR for affordability and check-off verification.
             </p>
             <button 
-              onClick={() => { setSurveyStatus('idle'); setSurveyForm({...surveyForm, selectedDevice: '', payrollConsent: false}); }}
+              onClick={() => { setSurveyStatus('idle'); setSurveyForm({...surveyForm, selectedDeviceId: '', payrollConsent: false}); }}
               className="inline-flex items-center justify-center px-6 py-3 border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-semibold rounded-xl transition-all hover:bg-slate-50"
             >
               Submit another request
@@ -371,20 +468,26 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Approved Devices for {surveyForm.roleTier}</label>
                     <select 
-                      required name="selectedDevice" value={surveyForm.selectedDevice} onChange={handleSurveyChange}
+                      required name="selectedDeviceId" value={surveyForm.selectedDeviceId} onChange={handleSurveyChange}
                       className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none"
                     >
-                      <option value="" disabled>Select a device...</option>
-                      {DEVICE_CATALOG[surveyForm.roleTier].map(device => (
-                        <option key={device} value={device}>{device}</option>
-                      ))}
+                      <option value="" disabled>Select a device to view pricing...</option>
+                      {DEVICE_CATALOG_MAPPING[surveyForm.roleTier].map(deviceId => {
+                        const device = DEFAULT_DEVICES.find(d => d.id === deviceId);
+                        if (!device) return null;
+                        return (
+                          <option key={device.id} value={device.id}>
+                            {device.name} - {formatPrice(devicePrices[device.id])}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>
               )}
 
               {/* Step 3: Plan & Consent (Conditional) */}
-              {surveyForm.selectedDevice && (
+              {surveyForm.selectedDeviceId && (
                 <div className="space-y-8 animate-fade-in pt-4">
                   
                   <div className="space-y-6">
@@ -463,7 +566,7 @@ export default function App() {
 
               <button 
                 type="submit" 
-                disabled={surveyStatus === 'submitting' || !surveyForm.selectedDevice}
+                disabled={surveyStatus === 'submitting' || !surveyForm.selectedDeviceId}
                 className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl flex justify-center items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl shadow-indigo-600/20 transform hover:-translate-y-0.5"
               >
                 {surveyStatus === 'submitting' ? 'Processing Request...' : 'Submit Official Request'}
@@ -478,6 +581,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f8fafc] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-50/40 via-slate-50 to-slate-100 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `}} />
+
       {/* Premium Header */}
       <header className="max-w-6xl mx-auto pt-6 pb-8 px-4 md:px-8">
         <div className="flex items-center justify-between bg-white/60 backdrop-blur-md border border-white/40 shadow-sm rounded-2xl px-6 py-4">
