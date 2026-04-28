@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings } from 'lucide-react';
+import { Building2, Link as LinkIcon, CheckCircle2, ShieldAlert, Send, Laptop, ArrowLeft, ChevronRight, CreditCard, Wifi, ShieldCheck, Settings, Mail } from 'lucide-react';
 
 // --- Data Models based on April 2026 Approved Devices ---
 const ROLE_BANDS = [
@@ -152,7 +152,8 @@ export default function App() {
       companyName: adminForm.companyName,
       contactPerson: adminForm.contactPerson,
       contactEmail: adminForm.contactEmail,
-      webAppBaseUrl: baseUrl
+      webAppBaseUrl: baseUrl,
+      surveyLink: link // Send the fully configured link to the backend so it can be emailed
     };
 
     try {
@@ -215,6 +216,12 @@ export default function App() {
     setCurrentView('survey');
   };
 
+  const getMailtoLink = () => {
+    const subject = encodeURIComponent(`TEP Connect Staff Device Program - ${adminForm.companyName}`);
+    const body = encodeURIComponent(`Hello ${adminForm.contactPerson || 'Team'},\n\nYour infrastructure for the TEP Connect Staff Device Program is ready.\n\nPlease share the following link with your eligible staff so they can securely register their device preferences and check-off consent:\n\n${generatedLink}\n\nBest regards,\nTEP Connect Administrator`);
+    return `mailto:${adminForm.contactEmail}?subject=${subject}&body=${body}`;
+  };
+
   // --- Views ---
   const renderAdminView = () => (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
@@ -254,9 +261,9 @@ export default function App() {
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Contact Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Contact Email *</label>
                 <input 
-                  type="email" name="contactEmail" value={adminForm.contactEmail} onChange={handleAdminChange}
+                  required type="email" name="contactEmail" value={adminForm.contactEmail} onChange={handleAdminChange}
                   className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-slate-800 shadow-sm"
                   placeholder="contact@company.com"
                 />
@@ -325,8 +332,8 @@ export default function App() {
               <h3 className="text-lg font-bold text-emerald-900 flex items-center gap-2 mb-2">
                 <CheckCircle2 className="text-emerald-600" /> Infrastructure Ready
               </h3>
-              <p className="text-sm text-emerald-700/80 mb-5">
-                Backend database generated. Share this unique link with the {adminForm.companyName} team to capture staff demand.
+              <p className="text-sm text-emerald-700/80 mb-5 leading-relaxed">
+                Backend database generated successfully. The survey link has been automatically emailed to <strong>{adminForm.contactEmail}</strong> via your backend service.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -349,7 +356,14 @@ export default function App() {
                 </button>
               </div>
               
-              <div className="mt-6 flex justify-end border-t border-emerald-200/50 pt-4">
+              <div className="mt-6 flex flex-col sm:flex-row justify-between items-center border-t border-emerald-200/50 pt-4 gap-4">
+                <a 
+                  href={getMailtoLink()}
+                  className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm flex items-center gap-1.5 transition-colors"
+                >
+                  <Mail size={16} /> Open Email Draft Manually
+                </a>
+
                 <button 
                   onClick={previewSurvey}
                   className="text-emerald-700 hover:text-emerald-900 font-semibold text-sm flex items-center gap-1.5 group"
